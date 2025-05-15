@@ -8,42 +8,34 @@ terraform {
 
 variable "environment" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.environment }}"
 }
 
 variable "storage_account_name" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.storageAccount.name }}"
 }
 
 variable "storage_container_name" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.storageAccount.containerName }}"
 }
 
 variable "database_name" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.database.name }}"
 }
 
 variable "schema_name" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.database.schemaName }}"
 }
 
 variable "table_name" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.database.tableName }}"
 }
 
 variable "file_format_type" {
   type    = string
-  default = "{{ .observed.composite.resource.spec.snowPipe.fileFormat.type }}"
 }
 
 variable "pipe_create_flag" {
   type    = bool
-  default = {{ .observed.composite.resource.spec.snowPipe.enabled }}
 }
 
 resource "snowflake_storage_integration" "integration" {
