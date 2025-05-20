@@ -279,31 +279,31 @@ resource "snowflake_file_format" "file_format" {
   format_type = var.file_format_type
   ## Optional parameters for the file format
   compression                      = var.file_format_compression
-  record_delimiter                 = var.file_format_record_delimiter
-  field_delimiter                  = var.file_format_field_delimiter
-  file_extension                   = var.file_format_file_extension
-  skip_header                      = var.file_format_skip_header
-  skip_blank_lines                 = var.file_format_skip_blank_lines
-  date_format                      = var.file_format_date_format
-  time_format                      = var.file_format_time_format
-  timestamp_format                 = var.file_format_timestamp_format
-  binary_format                    = var.file_format_binary_format
+  record_delimiter                 = var.file_format_recordDelimiter
+  field_delimiter                  = var.file_format_fieldDelimiter
+  file_extension                   = var.file_format_fileExtension
+  skip_header                      = var.file_format_skipHeader
+  skip_blank_lines                 = var.file_format_skipBlankLines
+  date_format                      = var.file_format_dateFormat
+  time_format                      = var.file_format_timeFormat
+  timestamp_format                 = var.file_format_timestampFormat
+  binary_format                    = var.file_format_binaryFormat
   escape                           = var.file_format_escape
-  escape_unenclosed_field          = var.file_format_escape_unenclosed_field
-  null_if                          = var.file_format_null_if
-  empty_field_as_null              = var.file_format_empty_field_as_null
-  field_optionally_enclosed_by    = var.file_format_field_optionally_enclosed_by
-  trim_space                       = var.file_format_trim_space
-  error_on_column_count_mismatch  = var.file_format_error_on_column_count_mismatch
-  replace_invalid_characters      = var.file_format_replace_invalid_characters
-  skip_byte_order_mark             = var.file_format_skip_byte_order_mark
+  escape_unenclosed_field          = var.file_format_escapeUnenclosedField
+  null_if                          = var.file_format_nullIf
+  empty_field_as_null              = var.file_format_emptyFieldAsNull
+  field_optionally_enclosed_by    = var.file_format_fieldOptionallyEnclosedBy
+  trim_space                       = var.file_format_trimSpace
+  error_on_column_count_mismatch  = var.file_format_errorOnColumnCountMismatch
+  replace_invalid_characters      = var.file_format_replaceInvalidCharacters
+  skip_byte_order_mark             = var.file_format_skipByteOrderMark
   encoding                         = var.file_format_encoding
-  allow_duplicate                  = var.file_format_allow_duplicate
-  strip_outer_array                = var.file_format_strip_outer_array
-  strip_null_values                = var.file_format_strip_null_values
-  ignore_utf8_errors               = var.file_format_ignore_utf8_errors
-  preserve_space                   = var.file_format_preserve_space
-  enable_octal                     = var.file_format_enable_octal
+  allow_duplicate                  = var.file_format_allowDuplicate
+  strip_outer_array                = var.file_format_stripOuterArray
+  strip_null_values                = var.file_format_stripNullValues
+  ignore_utf8_errors               = var.file_format_ignoreUtf8Errors
+  preserve_space                   = var.file_format_preserveSpace
+  enable_octal                     = var.file_format_enableOctal
 }
 
 
