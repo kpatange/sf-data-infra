@@ -18,7 +18,7 @@ terraform {
       resource_group_name  = "rg-weu-network-app-3966-nonprod"
       storage_account_name = "sfterraformstate"
       container_name       = "state"
-      key                 = "snowflake.tfstate"
+      key                 = "snowflakeparquet.tfstate"
     }
   }
 
@@ -171,7 +171,7 @@ variable "load_mode" {
 }
 
 resource "snowflake_storage_integration" "integration" {
-  name                      = "STI_${var.storage_account_name}_${var.environment}"
+  name                      = "STI_${var.storage_account_name}_${var.storage_container_name}_${var.environment}"
   comment                   = "Storage Integration ${var.storage_account_name}"
   type                      = "EXTERNAL_STAGE"
   enabled                   = true

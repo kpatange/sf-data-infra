@@ -101,7 +101,7 @@ variable "load_mode" {
 }
 
 resource "snowflake_storage_integration" "integration" {
-  name                      = "STI_${var.storage_account_name}_${var.environment}"
+  name                      = "STI_${var.storage_account_name}_${var.storage_container_name}_${var.environment}"
   comment                   = "Storage Integration ${var.storage_account_name}"
   type                      = "EXTERNAL_STAGE"
   enabled                   = true
@@ -114,11 +114,196 @@ resource "snowflake_storage_integration" "integration" {
 
 
 
+# Optional Parameters
+variable "compression" {
+  type    = string
+  default = null
+}
+
+variable "record_delimiter" {
+  type    = string
+  default = null
+}
+
+variable "field_delimiter" {
+  type    = string
+  default = null
+}
+
+variable "file_extension" {
+  type    = string
+  default = null
+}
+
+variable "skip_header" {
+  type    = number
+  default = null
+}
+
+variable "skip_blank_lines" {
+  type    = bool
+  default = null
+}
+
+variable "date_format" {
+  type    = string
+  default = null
+}
+
+variable "time_format" {
+  type    = string
+  default = null
+}
+
+variable "timestamp_format" {
+  type    = string
+  default = null
+}
+
+variable "binary_format" {
+  type    = string
+  default = null
+}
+
+variable "escape" {
+  type    = string
+  default = null
+}
+
+variable "escape_unenclosed_field" {
+  type    = string
+  default = null
+}
+
+variable "null_if" {
+  type    = list(string)
+  default = null
+}
+
+variable "empty_field_as_null" {
+  type    = bool
+  default = null
+}
+
+variable "field_optionally_enclosed_by" {
+  type    = string
+  default = null
+}
+
+variable "trim_space" {
+  type    = bool
+  default = null
+}
+
+variable "error_on_column_count_mismatch" {
+  type    = bool
+  default = null
+}
+
+variable "replace_invalid_characters" {
+  type    = bool
+  default = null
+}
+
+variable "validate_utf8" {
+  type    = bool
+  default = null
+}
+
+variable "skip_byte_order_mark" {
+  type    = bool
+  default = null
+}
+
+variable "encoding" {
+  type    = string
+  default = null
+}
+
+variable "allow_duplicate" {
+  type    = bool
+  default = null
+}
+
+variable "strip_outer_array" {
+  type    = bool
+  default = null
+}
+
+variable "strip_null_values" {
+  type    = bool
+  default = null
+}
+
+variable "ignore_utf8_errors" {
+  type    = bool
+  default = null
+}
+
+variable "preserve_space" {
+  type    = bool
+  default = null
+}
+
+variable "column_names_in_first_line" {
+  type    = bool
+  default = null
+}
+
+variable "input_null_values" {
+  type    = list(string)
+  default = null
+}
+
+variable "output_null_values" {
+  type    = list(string)
+  default = null
+}
+
+variable "enable_octal" {
+  type    = bool
+  default = null
+}
+
+variable "disable_snowflake_identifier" {
+  type    = bool
+  default = null
+}
+
+
+
 resource "snowflake_file_format" "file_format" {
   name        = "FF_${var.storage_account_name}_${var.storage_container_name}_${var.environment}"
   database    = var.database_name
   schema      = var.schema_name
   format_type = var.file_format_type
+  ## Optional parameters for the file format
+  compression                      = var.compression
+  record_delimiter                 = var.record_delimiter
+  field_delimiter                  = var.field_delimiter
+  file_extension                   = var.file_extension
+  skip_header                      = var.skip_header
+  skip_blank_lines                 = var.skip_blank_lines
+  date_format                      = var.date_format
+  time_format                      = var.time_format
+  timestamp_format                 = var.timestamp_format
+  binary_format                    = var.binary_format
+  escape                           = var.escape
+  escape_unenclosed_field          = var.escape_unenclosed_field
+  null_if                          = var.null_if
+  empty_field_as_null              = var.empty_field_as_null
+  field_optionally_enclosed_by    = var.field_optionally_enclosed_by
+  trim_space                       = var.trim_space
+  error_on_column_count_mismatch  = var.error_on_column_count_mismatch
+  replace_invalid_characters      = var.replace_invalid_characters
+  skip_byte_order_mark             = var.skip_byte_order_mark
+  encoding                         = var.encoding
+  allow_duplicate                  = var.allow_duplicate
+  strip_outer_array                = var.strip_outer_array
+  strip_null_values                = var.strip_null_values
+  ignore_utf8_errors               = var.ignore_utf8_errors
+  preserve_space                   = var.preserve_space
+  enable_octal                     = var.enable_octal
 }
 
 

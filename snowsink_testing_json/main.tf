@@ -171,7 +171,7 @@ variable "load_mode" {
 }
 
 resource "snowflake_storage_integration" "integration" {
-  name                      = "STI_${var.storage_account_name}_${var.environment}"
+  name                      = "STI_${var.storage_account_name}_${var.storage_container_name}_${var.environment}"
   comment                   = "Storage Integration ${var.storage_account_name}"
   type                      = "EXTERNAL_STAGE"
   enabled                   = true
