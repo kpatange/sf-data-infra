@@ -40,12 +40,12 @@ variable "pipe_create_flag" {
 }
 
 # Optional COPY statement tuning variables
-variable "copy_on_error" {
+variable "copy_onError" {
   type    = string
   default = "CONTINUE"
 }
 
-variable "copy_size_limit" {
+variable "copy_sizeLimit" {
   type    = number
   default = null
 }
@@ -55,22 +55,22 @@ variable "copy_purge" {
   default = null
 }
 
-variable "copy_return_failed_only" {
+variable "copy_returnFailedOnly" {
   type    = bool
   default = null
 }
 
-variable "copy_match_by_column_name" {
+variable "copy_matchByColumnName" {
   type    = string
   default = ""
 }
 
-variable "copy_include_metadata" {
+variable "copy_includeMetadata" {
   type    = string
   default = ""
 }
 
-variable "copy_enforce_length" {
+variable "copy_enforceLength" {
   type    = bool
   default = null
 }
@@ -85,17 +85,17 @@ variable "copy_force" {
   default = null
 }
 
-variable "copy_load_uncertain_files" {
+variable "copy_loadUncertainFiles" {
   type    = bool
   default = null
 }
 
-variable "copy_file_processor" {
+variable "copy_fileProcessor" {
   type    = string
   default = ""
 }
 
-variable "copy_load_mode" {
+variable "copy_loadMode" {
   type    = string
   default = ""
 }
@@ -120,47 +120,47 @@ variable "file_format_compression" {
   default = null
 }
 
-variable "file_format_record_delimiter" {
+variable "file_format_recordDelimiter" {
   type    = string
   default = null
 }
 
-variable "file_format_field_delimiter" {
+variable "file_format_fieldDelimiter" {
   type    = string
   default = null
 }
 
-variable "file_format_file_extension" {
+variable "file_format_fileExtension" {
   type    = string
   default = null
 }
 
-variable "file_format_skip_header" {
+variable "file_format_skipHeader" {
   type    = number
   default = null
 }
 
-variable "file_format_skip_blank_lines" {
+variable "file_format_skipBlankLines" {
   type    = bool
   default = null
 }
 
-variable "file_format_date_format" {
+variable "file_format_dateFormat" {
   type    = string
   default = null
 }
 
-variable "file_format_time_format" {
+variable "file_format_timeFormat" {
   type    = string
   default = null
 }
 
-variable "file_format_timestamp_format" {
+variable "file_format_timestampFormat" {
   type    = string
   default = null
 }
 
-variable "file_format_binary_format" {
+variable "file_format_binaryFormat" {
   type    = string
   default = null
 }
@@ -170,47 +170,47 @@ variable "file_format_escape" {
   default = null
 }
 
-variable "file_format_escape_unenclosed_field" {
+variable "file_format_escapeUnenclosedField" {
   type    = string
   default = null
 }
 
-variable "file_format_null_if" {
+variable "file_format_nullIf" {
   type    = list(string)
   default = null
 }
 
-variable "file_format_empty_field_as_null" {
+variable "file_format_emptyFieldAsNull" {
   type    = bool
   default = null
 }
 
-variable "file_format_field_optionally_enclosed_by" {
+variable "file_format_fieldOptionallyEnclosedBy" {
   type    = string
   default = null
 }
 
-variable "file_format_trim_space" {
+variable "file_format_trimSpace" {
   type    = bool
   default = null
 }
 
-variable "file_format_error_on_column_count_mismatch" {
+variable "file_format_errorOnColumnCountMismatch" {
   type    = bool
   default = null
 }
 
-variable "file_format_replace_invalid_characters" {
+variable "file_format_replaceInvalidCharacters" {
   type    = bool
   default = null
 }
 
-variable "file_format_validate_utf8" {
+variable "file_format_validateUtf8" {
   type    = bool
   default = null
 }
 
-variable "file_format_skip_byte_order_mark" {
+variable "file_format_skipByteOrderMark" {
   type    = bool
   default = null
 }
@@ -220,52 +220,52 @@ variable "file_format_encoding" {
   default = null
 }
 
-variable "file_format_allow_duplicate" {
+variable "file_format_allowDuplicate" {
   type    = bool
   default = null
 }
 
-variable "file_format_strip_outer_array" {
+variable "file_format_stripOuterArray" {
   type    = bool
   default = null
 }
 
-variable "file_format_strip_null_values" {
+variable "file_format_stripNullValues" {
   type    = bool
   default = null
 }
 
-variable "file_format_ignore_utf8_errors" {
+variable "file_format_ignoreUtf8Errors" {
   type    = bool
   default = null
 }
 
-variable "file_format_preserve_space" {
+variable "file_format_preserveSpace" {
   type    = bool
   default = null
 }
 
-variable "file_format_column_names_in_first_line" {
+variable "file_format_columnNamesInFirstLine" {
   type    = bool
   default = null
 }
 
-variable "file_format_input_null_values" {
+variable "file_format_inputNullValues" {
   type    = list(string)
   default = null
 }
 
-variable "file_format_output_null_values" {
+variable "file_format_outputNullValues" {
   type    = list(string)
   default = null
 }
 
-variable "file_format_enable_octal" {
+variable "file_format_enableOctal" {
   type    = bool
   default = null
 }
 
-variable "file_format_disable_snowflake_identifier" {
+variable "file_format_disableSnowflakeIdentifier" {
   type    = bool
   default = null
 }
@@ -340,18 +340,18 @@ resource "snowflake_pipe" "pipe" {
     COPY INTO ${var.database_name}.${var.schema_name}.${var.table_name}
     FROM @${var.database_name}.${var.schema_name}."${snowflake_stage.stage.name}"
     FILE_FORMAT = (FORMAT_NAME = ${var.database_name}.${var.schema_name}."${snowflake_file_format.file_format.name}")
-    ${var.copy_on_error != "" ? "ON_ERROR = ${var.on_error}" : ""}
-    ${var.copy_size_limit != null ? "SIZE_LIMIT = ${var.size_limit}" : ""}
-    ${var.copy_purge != null ? "PURGE = ${var.purge}" : ""}
-    ${var.copy_return_failed_only != null ? "RETURN_FAILED_ONLY = ${var.return_failed_only}" : ""}
-    ${var.copy_match_by_column_name != "" ? "MATCH_BY_COLUMN_NAME = ${var.match_by_column_name}" : ""}
-    ${var.copy_include_metadata != "" ? "INCLUDE_METADATA = (${var.include_metadata})" : ""}
-    ${var.copy_enforce_length != null ? "ENFORCE_LENGTH = ${var.enforce_length}" : ""}
-    ${var.copy_truncatecolumns != null ? "TRUNCATECOLUMNS = ${var.truncatecolumns}" : ""}
-    ${var.copy_force != null ? "FORCE = ${var.force}" : ""}
-    ${var.copy_load_uncertain_files != null ? "LOAD_UNCERTAIN_FILES = ${var.load_uncertain_files}" : ""}
-    ${var.copy_file_processor != "" ? "FILE_PROCESSOR = (${var.file_processor})" : ""}
-    ${var.copy_load_mode != "" ? "LOAD_MODE = ${var.load_mode}" : ""}
+    ${var.copy_onError != "" ? "ON_ERROR = ${var.copy_onError}" : ""}
+    ${var.copy_sizeLimit != null ? "SIZE_LIMIT = ${var.copy_sizeLimit}" : ""}
+    ${var.copy_purge != null ? "PURGE = ${var.copy_purge}" : ""}
+    ${var.copy_returnFailedOnly != null ? "RETURN_FAILED_ONLY = ${var.copy_returnFailedOnly}" : ""}
+    ${var.copy_matchByColumnName != "" ? "MATCH_BY_COLUMN_NAME = ${var.copy_matchByColumnName}" : ""}
+    ${var.copy_includeMetadata != "" ? "INCLUDE_METADATA = (${var.copy_includeMetadata})" : ""}
+    ${var.copy_enforceLength != null ? "ENFORCE_LENGTH = ${var.copy_enforceLength}" : ""}
+    ${var.copy_truncatecolumns != null ? "TRUNCATECOLUMNS = ${var.copy_truncatecolumns}" : ""}
+    ${var.copy_force != null ? "FORCE = ${var.copy_force}" : ""}
+    ${var.copy_loadUncertainFiles != null ? "LOAD_UNCERTAIN_FILES = ${var.copy_loadUncertainFiles}" : ""}
+    ${var.copy_fileProcessor != "" ? "FILE_PROCESSOR = (${var.copy_fileProcessor})" : ""}
+    ${var.copy_loadMode != "" ? "LOAD_MODE = ${var.copy_loadMode}" : ""}
   EOT
 
 
