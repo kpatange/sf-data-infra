@@ -33,34 +33,34 @@ variable "existing_azure_key_vault" {
   default = false
 }
 
-variable "snowflake_account" {
-  type = string
-}
-
-variable "snowflake_organization" {
-  type = string
-}
-
-variable "snowflake_user" {
-  type = string
-}
-
-variable "snowflake_role" {
-  type = string
-}
-
-variable "snowflake_warehouse" {
-  type = string
-}
-
-variable "snowflake_authenticator" {
-  type = string
-}
-
-variable "snowflake_password" {
-  description = "Snowflake password"
-  type        = string
-}
+#variable "snowflake_account" {
+#  type = string
+#}
+#
+#variable "snowflake_organization" {
+#  type = string
+#}
+#
+#variable "snowflake_user" {
+#  type = string
+#}
+#
+#variable "snowflake_role" {
+#  type = string
+#}
+#
+#variable "snowflake_warehouse" {
+#  type = string
+#}
+#
+#variable "snowflake_authenticator" {
+#  type = string
+#}
+#
+#variable "snowflake_password" {
+#  description = "Snowflake password"
+#  type        = string
+#}
 
 variable "location" {
   type        = string
