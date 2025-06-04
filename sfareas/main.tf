@@ -37,7 +37,7 @@ variable "snowflake_account_name" {
 #################################
 resource "snowflake_execute" "grants" {
   
-  execute ="USE ROLE SYSADMIN;"
+  #execute ="USE ROLE SYSADMIN;"
   execute = <<EOT
     CALL PROD_ADMIN_DB.UTILS.LOAD_DEPLOYMENT_STATEMENTS(
       '${var.env_suffix}',
