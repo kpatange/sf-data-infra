@@ -37,7 +37,7 @@ variable "snowflake_account_name" {
 #################################
 resource "snowflake_execute" "grants" {
   execute = <<EOT
-
+    EXECUTE IMMEDIATE $$
     USE ROLE "SYSADMIN";
     USE DATABASE PROD_ADMIN_DB;
     USE SCHEMA PROD_ADMIN_DB.UTILS;
@@ -47,6 +47,7 @@ resource "snowflake_execute" "grants" {
       '${jsonencode(var.owners_cdsids)}',
       '${var.snowflake_account_name}'
     );
+    $$
   EOT
 
   revert     = "SELECT 1"
