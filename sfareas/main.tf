@@ -40,7 +40,7 @@ resource "snowflake_execute" "grants" {
     CALL LOAD_DEPLOYMENT_STATEMENTS(
       '${var.env_suffix}',
       '${var.snowflake_area_name}',
-      ${jsonencode(var.owners_cdsids)},
+      '${jsonencode(var.owners_cdsids)}',
       '${var.snowflake_account_name}'
     );
   EOT
