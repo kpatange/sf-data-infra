@@ -47,7 +47,7 @@ resource "snowflake_execute" "grants" {
       '${jsonencode(var.owners_cdsids)}',
       '${var.snowflake_account_name}'
     );
-    $$
+    $$;
   EOT
 
   revert     = "SELECT 1"
