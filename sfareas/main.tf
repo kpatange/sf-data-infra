@@ -36,18 +36,16 @@ variable "snowflake_account_name" {
 # Snowflake Execute: Area Setup
 #################################
 resource "snowflake_execute" "grants" {
+  
+  execute ="USE ROLE SYSADMIN;"
   execute = <<EOT
-    EXECUTE IMMEDIATE $$
-    USE ROLE "SYSADMIN";
-    USE DATABASE PROD_ADMIN_DB;
-    USE SCHEMA PROD_ADMIN_DB.UTILS;
-    CALL LOAD_DEPLOYMENT_STATEMENTS(
+    CALL PROD_ADMIN_DB.UTILS.LOAD_DEPLOYMENT_STATEMENTS(
       '${var.env_suffix}',
       '${var.snowflake_area_name}',
       '${jsonencode(var.owners_cdsids)}',
       '${var.snowflake_account_name}'
     );
-    $$;
+    $$
   EOT
 
   revert     = "SELECT 1"
