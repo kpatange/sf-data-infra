@@ -359,7 +359,7 @@ resource "snowflake_execute" "grants" {
 #########################
 resource "kubernetes_secret" "snowflake_provider_credentials" {
   metadata {
-    name      = "tf-sf-${local.sv_user_name}-provider-creds"
+    name      = "tf-sf-app3966-etl-provider-creds"
     namespace = "upbound-system"
   }
 
