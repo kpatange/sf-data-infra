@@ -237,6 +237,7 @@ locals {
   key_vault_id = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].id : azurerm_key_vault.snowflake_keys[0].id
   key_vault_name = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].name : azurerm_key_vault.snowflake_keys[0].name
   key_vault_uri = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].vault_uri : azurerm_key_vault.snowflake_keys[0].vault_uri
+  sv_user_name = replace(var.service_user_name, "_", "-")
 }
 
 #########################
@@ -358,7 +359,7 @@ resource "snowflake_execute" "grants" {
 #########################
 resource "kubernetes_secret" "snowflake_provider_credentials" {
   metadata {
-    name      = "tf-sf-${var.service_user_name}-provider-creds"
+    name      = "tf-sf-${local.sv_user_name}-provider-creds"
     namespace = "upbound-system"
   }
 
