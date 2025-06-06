@@ -364,7 +364,7 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
 
   data = {
     credentials = jsonencode({
-      snowflake_account               = "SANDBOX"
+      snowflake_account               = var.snowflake_account_name
       snowflake_organization          = "VOLVOCARS"
       snowflake_user                  = var.service_user_name
       snowflake_role                  = var.snowflake_user_role
