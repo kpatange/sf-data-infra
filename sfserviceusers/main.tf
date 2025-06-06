@@ -23,6 +23,7 @@ terraform {
   required_version = ">= 1.2"
 }
 
+
 variable "key_vault_access_entra_group" {
   type    = string
   default = "CLD-SNOWFLAKE-SANDBOX-SBX-EDW-ANALYST-SG"
@@ -349,6 +350,32 @@ resource "snowflake_user" "user" {
 resource "snowflake_execute" "grants" {
   execute = "GRANT ROLE \"${var.snowflake_user_role}\" TO USER \"${var.service_user_name}\""
   revert = "SELECT 1"
+}
+
+
+#########################
+# Create Kubernetes Secret for Crossplane
+#########################
+resource "kubernetes_secret" "snowflake_provider_credentials" {
+  metadata {
+    name      = "tf-sf-test33-creds"
+    namespace = "upbound-system"
+  }
+
+  data = {
+    credentials = jsonencode({
+      snowflake_account               = test
+      snowflake_organization          = test2
+      snowflake_user                  = test3
+      snowflake_role                  = test4
+      snowflake_warehouse             = test5
+      snowflake_authenticator         = test6
+      snowflake_private_key           = tls_private_key.snowflake_key.private_key_pem
+      snowflake_private_key_passphrase = random_password.key_passphrase.result
+    })
+  }
+
+  type = "Opaque"
 }
 
 #########################
