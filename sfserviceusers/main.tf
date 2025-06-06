@@ -364,14 +364,14 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
 
   data = {
     credentials = jsonencode({
-      snowflake_account               = test
-      snowflake_organization          = test2
-      snowflake_user                  = test3
-      snowflake_role                  = test4
-      snowflake_warehouse             = test5
-      snowflake_authenticator         = test6
-      snowflake_private_key           = tls_private_key.snowflake_key.private_key_pem
-      snowflake_private_key_passphrase = random_password.key_passphrase.result
+      snowflake_account               = "test"
+      snowflake_organization          = "test2"
+      snowflake_user                  = "test3"
+      snowflake_role                  = "test4"
+      snowflake_warehouse             = "test5"
+      snowflake_authenticator         = "test6"
+      snowflake_private_key           = "test7"
+      snowflake_private_key_passphrase = "test8"
     })
   }
 
