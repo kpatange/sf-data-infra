@@ -169,6 +169,13 @@ variable "private_endpoint_name" {
   default     = "kv"
 }
 
+# Add variable for private endpoint name
+variable "tfproviderSecret" {
+  type        = string
+  description = "The name for the Key Vault private endpoint."
+  default     = "kv"
+}
+
 provider "azurerm" {
   features {
     key_vault {
@@ -359,7 +366,7 @@ resource "snowflake_execute" "grants" {
 #########################
 resource "kubernetes_secret" "snowflake_provider_credentials" {
   metadata {
-    name      = "tf-sf-app3966-etl-provider-creds"
+    name      = var.tfproviderSecret
     namespace = "upbound-system"
   }
 
