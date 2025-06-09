@@ -409,34 +409,34 @@ resource "snowflake_execute" "sendmail" {
 #########################
 # Outputs
 #########################
-output "snowflake_user" {
-  value = var.service_user_name
-}
-
-output "key_vault_name" {
-  value = local.key_vault_name
-}
-
-output "key_vault_uri" {
-  value = local.key_vault_uri
-}
-
-output "private_endpoint_id" {
-  value = var.existing_azure_key_vault ? "N/A - Using existing Key Vault" : azurerm_private_endpoint.kv_private_endpoint[0].id
-}
-
-output "private_key_secret_name" {
-  value = var.private_key_name != "" ? var.private_key_name : "${var.service_user_name}-private-key"
-}
-
-output "private_key_pkcs8_secret_name" {
-  value = "${var.service_user_name}-private-key-pkcs8"
-}
-
-output "public_key_secret_name" {
-  value = "${var.service_user_name}-public-key"
-}
-
-output "passphrase_secret_name" {
-  value = var.passphrase_key_name != "" ? var.passphrase_key_name : "${var.service_user_name}-key-passphrase"
-}
+#output "snowflake_user" {
+#  value = var.service_user_name
+#}
+#
+#output "key_vault_name" {
+#  value = local.key_vault_name
+#}
+#
+#output "key_vault_uri" {
+#  value = local.key_vault_uri
+#}
+#
+#output "private_endpoint_id" {
+#  value = var.existing_azure_key_vault ? "N/A - Using existing Key Vault" : azurerm_private_endpoint.kv_private_endpoint[0].id
+#}
+#
+#output "private_key_secret_name" {
+#  value = var.private_key_name != "" ? var.private_key_name : "${var.service_user_name}-private-key"
+#}
+#
+#output "private_key_pkcs8_secret_name" {
+#  value = "${var.service_user_name}-private-key-pkcs8"
+#}
+#
+#output "public_key_secret_name" {
+#  value = "${var.service_user_name}-public-key"
+#}
+#
+#output "passphrase_secret_name" {
+#  value = var.passphrase_key_name != "" ? var.passphrase_key_name : "${var.service_user_name}-key-passphrase"
+#}
