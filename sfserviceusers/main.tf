@@ -313,11 +313,11 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
 
 resource "snowflake_execute" "create_user_with_key" {
   execute = <<-SQL
-    CALL PROD_ADMIN_DB.UTILS.CREATE_USER_WITH_KEY_PAIR(
+    CALL PROD_ADMIN_DB.UTILS.CREATE_USER_WITH_KEY_PAIR_SECRET(
         '${var.service_user_name}',
-        '${var.snowflake_user_role}',
-        NULL,
-        '${local.actual_passphrase}',
+        '${var.service_user_name}',
+        'PUBLIC',
+        'DEV_ADMIN_ANALYST_WHS',
         'INFO'
     );
   SQL
@@ -326,8 +326,24 @@ resource "snowflake_execute" "create_user_with_key" {
   revert = "SELECT 1"
 }
 
+data "snowflake_secret" "jdbc_credentials" {
+  name = "SECRET_DEV_DINFRA_ETL_USR" # The name of your secret in Snowflake
+  database = "PROD_ADMIN_DB" # Database where the secret exists
+  schema = "UTILS" # Schema where the secret exists
+}
+
 locals {
-  snowflake_key_response = jsondecode(snowflake_execute.create_user_with_key.result[0])
+  secret_data = jsondecode(data.snowflake_secret.jdbc_credentials.secret_string)
+}
+
+output "jdbc_connection_details" {
+  value = {
+    username     = local.secret_data.username
+    jdbc_key     = local.secret_data.private_key_for_jdbc
+    passphrase   = sensitive(local.secret_data.passphrase) # Mark as sensitive
+    public_key   = local.secret_data.public_key
+  }
+  sensitive = true # Mark entire output as sensitive
 }
 
 
