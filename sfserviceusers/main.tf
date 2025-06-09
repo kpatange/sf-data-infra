@@ -314,12 +314,22 @@ resource "tls_private_key" "snowflake_key" {
   #passphrase = local.actual_passphrase
 }
 
+
+data "tls_private_key_pem" "snowflake_key_encrypted" {
+  private_key_pem      = tls_private_key.snowflake_key.private_key_pem
+  passphrase           = local.actual_passphrase
+  encoding             = "PEM"
+  format               = "PKCS8"
+  cipher               = "AES256"
+}
+
+
 #########################
 # Store Private Key in Key Vault (with user-specific name) test
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
   name           = var.private_key_name
-  value          = tls_private_key.snowflake_key.private_key_pem_pkcs8
+  value          = data.tls_private_key_pem.snowflake_key_encrypted.private_key_pem
   key_vault_id   = local.key_vault_id # This *must* be on a new line
 
   depends_on = [
