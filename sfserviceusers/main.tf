@@ -315,13 +315,6 @@ resource "tls_private_key" "snowflake_key" {
 }
 
 
-data "tls_private_key_pem" "snowflake_key_encrypted" {
-  private_key_pem      = tls_private_key.snowflake_key.private_key_pem
-  passphrase           = local.actual_passphrase
-  encoding             = "PEM"
-  format               = "PKCS8"
-  cipher               = "AES256"
-}
 
 
 #########################
