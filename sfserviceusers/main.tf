@@ -23,19 +23,45 @@ terraform {
   required_version = ">= 1.2"
 }
 
+
 variable "key_vault_access_entra_group" {
   type    = string
   default = "CLD-SNOWFLAKE-SANDBOX-SBX-EDW-ANALYST-SG"
-}
-
-provider "kubernetes" {
-  config_path = null # Forces in-cluster config
 }
 
 variable "existing_azure_key_vault" {
   type    = bool
   default = false
 }
+
+#variable "snowflake_account" {
+#  type = string
+#}
+#
+#variable "snowflake_organization" {
+#  type = string
+#}
+#
+#variable "snowflake_user" {
+#  type = string
+#}
+#
+#variable "snowflake_role" {
+#  type = string
+#}
+#
+#variable "snowflake_warehouse" {
+#  type = string
+#}
+#
+#variable "snowflake_authenticator" {
+#  type = string
+#}
+#
+#variable "snowflake_password" {
+#  description = "Snowflake password"
+#  type        = string
+#}
 
 variable "location" {
   type        = string
@@ -136,12 +162,14 @@ variable "passphrase_key_name" {
   default = ""
 }
 
+# Add variable for private endpoint name
 variable "private_endpoint_name" {
   type        = string
   description = "The name for the Key Vault private endpoint."
   default     = "kv"
 }
 
+# Add variable for private endpoint name
 variable "tfproviderSecret" {
   type        = string
   description = "The name for the Key Vault private endpoint."
@@ -156,7 +184,22 @@ provider "azurerm" {
   }
 }
 
-
+#provider "snowflake" {
+#  account_name         = var.snowflake_account
+#  organization_name    = var.snowflake_organization
+#  user                = var.snowflake_user
+#  role                = var.snowflake_role
+#  warehouse           = var.snowflake_warehouse
+#  password            = var.snowflake_password
+#  preview_features_enabled = [
+#    "snowflake_database_datasource",
+#    "snowflake_storage_integration_resource",
+#    "snowflake_stage_resource",
+#    "snowflake_pipe_resource",
+#    "snowflake_table_resource",
+#    "snowflake_file_format_resource"
+#  ]
+#}
 
 #########################
 # Data Sources
@@ -178,6 +221,7 @@ data "azurerm_subnet" "subnet" {
   resource_group_name  = var.vnet_rg_name
 }
 
+# Data source for existing Key Vault (when existing_azure_key_vault is true)
 data "azurerm_key_vault" "existing" {
   count               = var.existing_azure_key_vault ? 1 : 0
   name                = var.key_vault_name
@@ -196,11 +240,11 @@ resource "random_password" "key_passphrase" {
 
 locals {
   actual_passphrase = var.key_passphrase != "" ? var.key_passphrase : random_password.key_passphrase[0].result
+  # Use existing or new Key Vault based on flag
   key_vault_id = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].id : azurerm_key_vault.snowflake_keys[0].id
   key_vault_name = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].name : azurerm_key_vault.snowflake_keys[0].name
   key_vault_uri = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].vault_uri : azurerm_key_vault.snowflake_keys[0].vault_uri
   sv_user_name = replace(var.service_user_name, "_", "-")
-  key_dir          = "/tmp/keys" # Using pod's tmp directory
 }
 
 #########################
@@ -239,7 +283,7 @@ resource "azurerm_key_vault" "snowflake_keys" {
 }
 
 #########################
-# Private Endpoint
+# Private Endpoint (only for new Key Vault)
 #########################
 resource "azurerm_private_endpoint" "kv_private_endpoint" {
   count               = var.existing_azure_key_vault ? 0 : 1
@@ -256,102 +300,40 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
   }
 }
 
-# Install OpenSSL in the pod (if not already installed)
-resource "null_resource" "generate_keys" {
-  triggers = {
-    always_run = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      # Install OpenSSL if needed
-      if ! command -v openssl; then
-        echo "Installing OpenSSL..."
-        if grep -q Alpine /etc/issue; then
-          apk add --no-cache openssl
-        elif grep -q Ubuntu /etc/issue || grep -q Debian /etc/issue; then
-          apt-get update && apt-get install -y openssl
-        elif grep -q CentOS /etc/issue || grep -q RedHat /etc/issue; then
-          yum install -y openssl
-        fi
-      fi
-
-      # Create working directory
-      KEY_DIR=$(mktemp -d)
-      echo "Using directory: $KEY_DIR"
-
-      # Generate keys
-      openssl genrsa -out "$KEY_DIR/private_key.pem" 2048
-      openssl pkcs8 -topk8 -inform PEM -outform PEM \
-        -in "$KEY_DIR/private_key.pem" \
-        -out "$KEY_DIR/private_key_pkcs8.pem" \
-        -passout pass:"${replace(local.actual_passphrase, "\"", "\\\"")}"
-      openssl rsa -in "$KEY_DIR/private_key.pem" \
-        -pubout -out "$KEY_DIR/public_key.pem"
-      chmod 600 "$KEY_DIR"/*.pem
-
-      # Create Kubernetes secret
-      kubectl create secret generic snowflake-keys \
-        --namespace=upbound-system \
-        --from-file="$KEY_DIR/private_key.pem" \
-        --from-file="$KEY_DIR/private_key_pkcs8.pem" \
-        --from-file="$KEY_DIR/public_key.pem" \
-        --dry-run=client -o yaml | kubectl apply -f -
-
-      # Clean up (except in destroy phase)
-      if [ -z "$TERRAFORM_DESTROY" ]; then
-        rm -rf "$KEY_DIR"
-      fi
-    EOT
-
-    environment = {
-      TERRAFORM_DESTROY = "false"
-    }
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = <<-EOT
-      # Find and clean up any leftover key directories
-      find /tmp -name 'keys-*' -type d -mtime +1 -exec rm -rf {} + 2>/dev/null || true
-    EOT
-  }
-}
-
-data "kubernetes_secret" "snowflake_keys" {
-  metadata {
-    name      = "snowflake-keys"
-    namespace = "upbound-system"
-  }
-
-  depends_on = [null_resource.generate_keys]
+#########################
+# RSA Key Pair
+#########################
+resource "tls_private_key" "snowflake_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
 }
 
 #########################
-# Store Keys in Key Vault
+# Store Private Key in Key Vault (with user-specific name)
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
-  name         = var.private_key_name != "" ? var.private_key_name : "${local.sv_user_name}-private-key"
-  value        = data.kubernetes_secret.snowflake_keys.data["private_key.pem"]
+  name         = var.private_key_name
+  value        = tls_private_key.snowflake_key.private_key_pem_pkcs8(local.actual_passphrase)
   key_vault_id = local.key_vault_id
+
+  depends_on = [
+    azurerm_private_endpoint.kv_private_endpoint,
+    azurerm_key_vault.snowflake_keys
+  ]
 }
 
-resource "azurerm_key_vault_secret" "private_key_pkcs8" {
-  name         = "${local.sv_user_name}-private-key-pkcs8"
-  value        = data.kubernetes_secret.snowflake_keys.data["private_key_pkcs8.pem"]
-  key_vault_id = local.key_vault_id
-}
-
-resource "azurerm_key_vault_secret" "public_key" {
-  name         = "${local.sv_user_name}-public-key"
-  value        = data.kubernetes_secret.snowflake_keys.data["public_key.pem"]
-  key_vault_id = local.key_vault_id
-}
-
+#########################
+# Store Passphrase in Key Vault (with user-specific name)
+#########################
 resource "azurerm_key_vault_secret" "passphrase" {
-  name         = var.passphrase_key_name != "" ? var.passphrase_key_name : "${local.sv_user_name}-key-passphrase"
+  name         =  var.passphrase_key_name
   value        = local.actual_passphrase
   key_vault_id = local.key_vault_id
+
+  depends_on = [
+    azurerm_private_endpoint.kv_private_endpoint,
+    azurerm_key_vault.snowflake_keys
+  ]
 }
 
 #########################
@@ -361,55 +343,68 @@ resource "snowflake_user" "user" {
   name         = var.service_user_name
   comment      = var.comment
   disabled     = "false"
-  default_role = var.snowflake_user_role
+  default_role = var.snowflake_role
 
   rsa_public_key = replace(
     replace(
-      data.kubernetes_secret.snowflake_keys.data["public_key.pem"],
+      tls_private_key.snowflake_key.public_key_pem,
       "-----BEGIN PUBLIC KEY-----", ""
     ),
     "-----END PUBLIC KEY-----", ""
   )
 }
 
+# create and destroy resource using qualified name
 resource "snowflake_execute" "grants" {
   execute = "GRANT ROLE \"${var.snowflake_user_role}\" TO USER \"${var.service_user_name}\""
   revert = "SELECT 1"
 }
 
+
+# create and destroy resource using qualified name
 resource "snowflake_execute" "sendmail" {
   execute = "CALL PROD_ADMIN_DB.UTILS.SEND_AREA_SERVICEUSR_EMAIL('${var.application_id}','${var.environment}','${var.snowflake_account_name}','${var.key_vault_name}','${var.application_id}','${var.service_user_name}')"
   revert = "SELECT 1"
 }
 
 #########################
-# Kubernetes Secret for Crossplane
+# Create Kubernetes Secret for Crossplane
 #########################
-#resource "kubernetes_secret" "snowflake_provider_credentials" {
-#  metadata {
-#    name      = var.tfproviderSecret
-#    namespace = "upbound-system"
-#  }
-#
-#  data = {
-#    credentials = jsonencode({
-#      snowflake_account               = var.snowflake_account_name
-#      snowflake_organization          = "VOLVOCARS"
-#      snowflake_user                  = var.service_user_name
-#      snowflake_role                  = var.snowflake_user_role
-#      snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
-#      snowflake_authenticator         = "JWT"
-#      snowflake_private_key           = data.kubernetes_secret.snowflake_keys.data["private_key_pkcs8.pem"]
-#      snowflake_private_key_passphrase = local.actual_passphrase
-#    })
-#  }
-#
-#  type = "Opaque"
-#}
-#
+resource "kubernetes_secret" "snowflake_provider_credentials" {
+  metadata {
+    name      = var.tfproviderSecret
+    namespace = "upbound-system"
+  }
+
+  data = {
+    credentials = jsonencode({
+      snowflake_account               = var.snowflake_account_name
+      snowflake_organization          = "VOLVOCARS"
+      snowflake_user                  = var.service_user_name
+      snowflake_role                  = var.snowflake_user_role
+      snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
+      snowflake_authenticator         = "JWT"
+      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pem_pkcs8(local.actual_passphrase)
+      snowflake_private_key_passphrase = local.actual_passphrase
+    })
+  }
+
+  type = "Opaque"
+}
+
 #########################
 # Outputs
 #########################
+#locals {
+#  snowflake_public_key = replace(
+#    replace(
+#      tls_private_key.snowflake_key.public_key_pem,
+#      "-----BEGIN PUBLIC KEY-----", ""
+#    ),
+#    "-----END PUBLIC KEY-----", ""
+#  )
+#}
+#
 #output "snowflake_user" {
 #  value = var.service_user_name
 #}
@@ -426,18 +421,15 @@ resource "snowflake_execute" "sendmail" {
 #  value = var.existing_azure_key_vault ? "N/A - Using existing Key Vault" : azurerm_private_endpoint.kv_private_endpoint[0].id
 #}
 #
+#output "snowflake_rsa_public_key" {
+#  value = trimspace(local.snowflake_public_key)
+#}
+#
 #output "private_key_secret_name" {
-#  value = var.private_key_name != "" ? var.private_key_name : "${var.service_user_name}-private-key"
-#}
-#
-#output "private_key_pkcs8_secret_name" {
-#  value = "${var.service_user_name}-private-key-pkcs8"
-#}
-#
-#output "public_key_secret_name" {
-#  value = "${var.service_user_name}-public-key"
+#  value = "${var.service_user_name}-private-key"
 #}
 #
 #output "passphrase_secret_name" {
-#  value = var.passphrase_key_name != "" ? var.passphrase_key_name : "${var.service_user_name}-key-passphrase"
+#  value = "${var.service_user_name}-key-passphrase"
 #}
+
