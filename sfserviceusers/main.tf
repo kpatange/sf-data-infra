@@ -200,6 +200,7 @@ locals {
   key_vault_name = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].name : azurerm_key_vault.snowflake_keys[0].name
   key_vault_uri = var.existing_azure_key_vault ? data.azurerm_key_vault.existing[0].vault_uri : azurerm_key_vault.snowflake_keys[0].vault_uri
   sv_user_name = replace(var.service_user_name, "_", "-")
+  key_dir          = "/tmp/keys" # Using pod's tmp directory
 }
 
 #########################
@@ -255,99 +256,54 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
   }
 }
 
-#########################
-# Kubernetes Key Generation Job
-#########################
-resource "kubernetes_job" "openssl_keygen" {
+# Install OpenSSL in the pod (if not already installed)
+resource "null_resource" "install_openssl" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Installing OpenSSL..."
+      apk add --no-cache openssl || \
+      apt-get update && apt-get install -y openssl || \
+      yum install -y openssl
+      mkdir -p ${local.key_dir}
+    EOT
+  }
+}
+
+# Generate the keys using local OpenSSL
+resource "null_resource" "generate_keys" {
+  depends_on = [null_resource.install_openssl]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Generating keys..."
+      openssl genrsa -out ${local.key_dir}/private_key.pem 2048
+      openssl pkcs8 -topk8 -inform PEM -outform PEM \
+        -in ${local.key_dir}/private_key.pem \
+        -out ${local.key_dir}/private_key_pkcs8.pem \
+        -passout pass:'${local.actual_passphrase}'
+      openssl rsa -in ${local.key_dir}/private_key.pem \
+        -pubout -out ${local.key_dir}/public_key.pem
+      chmod 600 ${local.key_dir}/*.pem
+    EOT
+  }
+}
+
+# Create the Kubernetes secret from generated files
+resource "kubernetes_secret" "snowflake_keys" {
+  depends_on = [null_resource.generate_keys]
+
   metadata {
-    name      = "openssl-keygen"
+    name      = "snowflake-keys"
     namespace = "upbound-system"
   }
 
-  spec {
-    ttl_seconds_after_finished = 86400
-    backoff_limit              = 0
-
-    template {
-      metadata {
-        labels = {
-          app = "openssl-keygen"
-        }
-      }
-
-      spec {
-        container {
-          name  = "openssl"
-          image = "alpine/openssl:latest"
-          
-          command = [
-            "/bin/sh", 
-            "-c",
-            <<-EOT
-              # Generate keys
-              set -e
-              echo "Generating RSA keys..."
-              openssl genrsa -out /tmp/private_key.pem 2048
-              openssl pkcs8 -topk8 -inform PEM -outform PEM -in /tmp/private_key.pem \
-                -out /tmp/private_key_pkcs8.pem -passout pass:'${local.actual_passphrase}'
-              openssl rsa -in /tmp/private_key.pem -pubout -out /tmp/public_key.pem
-              
-              # Verify files were created
-              ls -la /tmp/*.pem
-              
-              # Wait for files to be written
-              sync
-              sleep 2
-            EOT
-          ]
-
-          volume_mount {
-            name       = "shared-data"
-            mount_path = "/tmp"
-          }
-        }
-
-        # This container will create the secret using the generated files
-        container {
-          name  = "kubectl"
-          image = "bitnami/kubectl:latest"
-          
-          command = [
-            "/bin/sh", 
-            "-c",
-            <<-EOT
-              set -e
-              echo "Creating Kubernetes secret..."
-              kubectl create secret generic snowflake-keys \
-                --namespace=upbound-system \
-                --from-file=private_key.pem=/shared-data/private_key.pem \
-                --from-file=private_key_pkcs8.pem=/shared-data/private_key_pkcs8.pem \
-                --from-file=public_key.pem=/shared-data/public_key.pem \
-                --dry-run=client -o yaml | kubectl apply -f -
-              
-              echo "Secret created successfully"
-              kubectl get secret snowflake-keys -n upbound-system --show-labels
-            EOT
-          ]
-
-          volume_mount {
-            name       = "shared-data"
-            mount_path = "/shared-data"
-          }
-        }
-
-        volume {
-          name = "shared-data"
-          empty_dir {}
-        }
-
-        restart_policy = "Never"
-        automount_service_account_token = true
-        service_account_name = "terraform"
-      }
-    }
+  data = {
+    "private_key.pem"       = file("${local.key_dir}/private_key.pem")
+    "private_key_pkcs8.pem" = file("${local.key_dir}/private_key_pkcs8.pem")
+    "public_key.pem"        = file("${local.key_dir}/public_key.pem")
   }
 }
+
 
 data "kubernetes_secret" "snowflake_keys" {
   metadata {
@@ -355,7 +311,7 @@ data "kubernetes_secret" "snowflake_keys" {
     namespace = "upbound-system"
   }
 
-  depends_on = [kubernetes_job.openssl_keygen]
+  #depends_on = [kubernetes_job.openssl_keygen]
 }
 
 #########################
