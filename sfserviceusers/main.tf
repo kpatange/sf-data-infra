@@ -384,7 +384,7 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_role                  = var.snowflake_user_role
       snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
       snowflake_authenticator         = "JWT"
-      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pem_pkcs8(local.actual_passphrase)
+      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pem_pkcs8
       snowflake_private_key_passphrase = local.actual_passphrase
     })
   }
