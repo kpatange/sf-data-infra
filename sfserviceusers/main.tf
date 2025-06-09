@@ -19,10 +19,6 @@ terraform {
     snowflake = {
       source  = "Snowflake-Labs/snowflake"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
-  }
   required_version = ">= 1.2"
   }
 }
