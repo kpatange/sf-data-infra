@@ -19,6 +19,9 @@ terraform {
     snowflake = {
       source  = "Snowflake-Labs/snowflake"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
   }
   required_version = ">= 1.2"
 }
@@ -26,6 +29,10 @@ terraform {
 variable "key_vault_access_entra_group" {
   type    = string
   default = "CLD-SNOWFLAKE-SANDBOX-SBX-EDW-ANALYST-SG"
+}
+
+provider "kubernetes" {
+  config_path = null # Forces in-cluster config
 }
 
 variable "existing_azure_key_vault" {
@@ -152,9 +159,7 @@ provider "azurerm" {
   }
 }
 
-provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
+
 
 #########################
 # Data Sources
@@ -283,34 +288,64 @@ resource "kubernetes_job" "openssl_keygen" {
             "-c",
             <<-EOT
               # Generate keys
+              set -e
+              echo "Generating RSA keys..."
               openssl genrsa -out /tmp/private_key.pem 2048
-              openssl pkcs8 -topk8 -inform PEM -outform PEM -in /tmp/private_key.pem -out /tmp/private_key_pkcs8.pem -passout pass:'${local.actual_passphrase}'
+              openssl pkcs8 -topk8 -inform PEM -outform PEM -in /tmp/private_key.pem \
+                -out /tmp/private_key_pkcs8.pem -passout pass:'${local.actual_passphrase}'
               openssl rsa -in /tmp/private_key.pem -pubout -out /tmp/public_key.pem
               
-              # Store in Kubernetes Secret
-              kubectl create secret generic snowflake-keys \
-                --from-file=private_key.pem=/tmp/private_key.pem \
-                --from-file=private_key_pkcs8.pem=/tmp/private_key_pkcs8.pem \
-                --from-file=public_key.pem=/tmp/public_key.pem \
-                --dry-run=client -o yaml | kubectl apply -f -
+              # Verify files were created
+              ls -la /tmp/*.pem
+              
+              # Wait for files to be written
+              sync
+              sleep 2
             EOT
           ]
 
           volume_mount {
-            name       = "kubeconfig"
-            mount_path = "/root/.kube"
-            read_only  = true
+            name       = "shared-data"
+            mount_path = "/tmp"
+          }
+        }
+
+        # This container will create the secret using the generated files
+        container {
+          name  = "kubectl"
+          image = "bitnami/kubectl:latest"
+          
+          command = [
+            "/bin/sh", 
+            "-c",
+            <<-EOT
+              set -e
+              echo "Creating Kubernetes secret..."
+              kubectl create secret generic snowflake-keys \
+                --namespace=upbound-system \
+                --from-file=private_key.pem=/shared-data/private_key.pem \
+                --from-file=private_key_pkcs8.pem=/shared-data/private_key_pkcs8.pem \
+                --from-file=public_key.pem=/shared-data/public_key.pem \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              echo "Secret created successfully"
+              kubectl get secret snowflake-keys -n upbound-system --show-labels
+            EOT
+          ]
+
+          volume_mount {
+            name       = "shared-data"
+            mount_path = "/shared-data"
           }
         }
 
         volume {
-          name = "kubeconfig"
-          secret {
-            secret_name = "kube-config"
-          }
+          name = "shared-data"
+          empty_dir {}
         }
 
         restart_policy = "Never"
+        automount_service_account_token = true
         service_account_name = "terraform"
       }
     }
