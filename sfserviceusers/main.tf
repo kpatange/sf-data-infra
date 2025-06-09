@@ -257,16 +257,22 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
 }
 
 # Install OpenSSL in the pod (if not already installed)
-# Install OpenSSL and generate keys
 resource "null_resource" "generate_keys" {
+  triggers = {
+    always_run = timestamp()
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
+      #!/bin/sh
+      set -e
+
       # Install OpenSSL if not present
-      if ! command -v openssl &> /dev/null; then
+      if ! command -v openssl >/dev/null 2>&1; then
         echo "Installing OpenSSL..."
-        apk add --no-cache openssl || \
-        apt-get update && apt-get install -y openssl || \
-        yum install -y openssl
+        (apk add --no-cache openssl || \
+         apt-get update && apt-get install -y openssl || \
+         yum install -y openssl) >/dev/null 2>&1
       fi
 
       # Create key directory
@@ -277,12 +283,12 @@ resource "null_resource" "generate_keys" {
       openssl pkcs8 -topk8 -inform PEM -outform PEM \
         -in ${local.key_dir}/private_key.pem \
         -out ${local.key_dir}/private_key_pkcs8.pem \
-        -passout pass:'${local.actual_passphrase}'
+        -passout pass:'${replace(local.actual_passphrase, "'", "'\\''")}'
       openssl rsa -in ${local.key_dir}/private_key.pem \
         -pubout -out ${local.key_dir}/public_key.pem
       chmod 600 ${local.key_dir}/*.pem
 
-      # Create Kubernetes secret directly
+      # Create Kubernetes secret
       kubectl create secret generic snowflake-keys \
         --namespace=upbound-system \
         --from-file=${local.key_dir}/private_key.pem \
@@ -290,11 +296,15 @@ resource "null_resource" "generate_keys" {
         --from-file=${local.key_dir}/public_key.pem \
         --dry-run=client -o yaml | kubectl apply -f -
     EOT
+
+    interpreter = ["/bin/sh", "-c"]
   }
 
-
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -rf ${local.key_dir}"
+  }
 }
-
 # Data source to verify the secret was created
 data "kubernetes_secret" "snowflake_keys" {
   metadata {
