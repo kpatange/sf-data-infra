@@ -310,8 +310,8 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
 resource "tls_private_key" "snowflake_key" {
   algorithm = "RSA"
   rsa_bits  = 2048
-  encryption_algorithm = "AES-256-CBC"
-  passphrase = local.actual_passphrase
+  #encryption_algorithm = "AES-256-CBC"
+  #passphrase = local.actual_passphrase
 }
 
 #########################
