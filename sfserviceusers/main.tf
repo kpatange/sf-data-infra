@@ -257,25 +257,22 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
 }
 
 # Install OpenSSL in the pod (if not already installed)
-resource "null_resource" "install_openssl" {
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo "Installing OpenSSL..."
-      apk add --no-cache openssl || \
-      apt-get update && apt-get install -y openssl || \
-      yum install -y openssl
-      mkdir -p ${local.key_dir}
-    EOT
-  }
-}
-
-# Generate the keys using local OpenSSL
+# Install OpenSSL and generate keys
 resource "null_resource" "generate_keys" {
-  depends_on = [null_resource.install_openssl]
-
   provisioner "local-exec" {
     command = <<-EOT
-      echo "Generating keys..."
+      # Install OpenSSL if not present
+      if ! command -v openssl &> /dev/null; then
+        echo "Installing OpenSSL..."
+        apk add --no-cache openssl || \
+        apt-get update && apt-get install -y openssl || \
+        yum install -y openssl
+      fi
+
+      # Create key directory
+      mkdir -p ${local.key_dir}
+
+      # Generate keys
       openssl genrsa -out ${local.key_dir}/private_key.pem 2048
       openssl pkcs8 -topk8 -inform PEM -outform PEM \
         -in ${local.key_dir}/private_key.pem \
@@ -284,34 +281,35 @@ resource "null_resource" "generate_keys" {
       openssl rsa -in ${local.key_dir}/private_key.pem \
         -pubout -out ${local.key_dir}/public_key.pem
       chmod 600 ${local.key_dir}/*.pem
+
+      # Create Kubernetes secret directly
+      kubectl create secret generic snowflake-keys \
+        --namespace=upbound-system \
+        --from-file=${local.key_dir}/private_key.pem \
+        --from-file=${local.key_dir}/private_key_pkcs8.pem \
+        --from-file=${local.key_dir}/public_key.pem \
+        --dry-run=client -o yaml | kubectl apply -f -
+    EOT
+  }
+
+  # Clean up when destroying
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      kubectl delete secret snowflake-keys --namespace=upbound-system --ignore-not-found
+      rm -rf ${local.key_dir}
     EOT
   }
 }
 
-# Create the Kubernetes secret from generated files
-resource "kubernetes_secret" "snowflake_keys" {
-  depends_on = [null_resource.generate_keys]
-
-  metadata {
-    name      = "snowflake-keys"
-    namespace = "upbound-system"
-  }
-
-  data = {
-    "private_key.pem"       = file("${local.key_dir}/private_key.pem")
-    "private_key_pkcs8.pem" = file("${local.key_dir}/private_key_pkcs8.pem")
-    "public_key.pem"        = file("${local.key_dir}/public_key.pem")
-  }
-}
-
-
+# Data source to verify the secret was created
 data "kubernetes_secret" "snowflake_keys" {
   metadata {
     name      = "snowflake-keys"
     namespace = "upbound-system"
   }
 
-  #depends_on = [kubernetes_job.openssl_keygen]
+  depends_on = [null_resource.generate_keys]
 }
 
 #########################
