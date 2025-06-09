@@ -18,7 +18,15 @@ terraform {
     }
     snowflake = {
       source  = "Snowflake-Labs/snowflake"
-    } 
+    }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.0"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
   required_version = ">= 1.2"
 }
@@ -122,9 +130,9 @@ variable "private_key_name" {
   default = ""
 }
 
-variable "private_key_pkcs8_name" {
+variable "private_key_pkcs8_encrypted_name" {
   type        = string
-  description = "The name for the PKCS#8 formatted private key in Key Vault."
+  description = "The name for the PKCS#8 encrypted private key in Key Vault."
   default     = ""
 }
 
@@ -132,6 +140,18 @@ variable "private_key_der_name" {
   type        = string
   description = "The name for the DER formatted private key in Key Vault."
   default     = ""
+}
+
+variable "public_key_name" {
+  type        = string
+  description = "The name for the public key in Key Vault."
+  default     = ""
+}
+
+variable "use_external_openssl" {
+  type        = bool
+  description = "Whether to use external OpenSSL commands for key generation. Set to false if OpenSSL is not available."
+  default     = false
 }
 
 variable "snowflake_user_role" {
@@ -211,6 +231,58 @@ locals {
 }
 
 #########################
+# Install OpenSSL (if not present)
+#########################
+resource "null_resource" "install_openssl" {
+  count = var.use_external_openssl ? 1 : 0
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      # Check if OpenSSL is already installed
+      if ! command -v openssl &> /dev/null; then
+        echo "OpenSSL not found. Attempting to install..."
+        
+        # Detect OS and install OpenSSL
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Linux
+          if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y openssl
+          elif command -v yum &> /dev/null; then
+            sudo yum install -y openssl
+          elif command -v dnf &> /dev/null; then
+            sudo dnf install -y openssl
+          elif command -v zypper &> /dev/null; then
+            sudo zypper install -y openssl
+          else
+            echo "Unsupported Linux package manager. Please install OpenSSL manually."
+            exit 1
+          fi
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          if command -v brew &> /dev/null; then
+            brew install openssl
+          else
+            echo "Homebrew not found. Please install OpenSSL manually or install Homebrew first."
+            exit 1
+          fi
+        else
+          echo "Unsupported operating system. Please install OpenSSL manually."
+          exit 1
+        fi
+        
+        # Verify installation
+        if ! command -v openssl &> /dev/null; then
+          echo "OpenSSL installation failed. Please install it manually."
+          exit 1
+        fi
+      else
+        echo "OpenSSL is already installed."
+      fi
+    EOT
+  }
+}
+
+#########################
 # Key Vault Configuration
 #########################
 resource "azurerm_key_vault" "snowflake_keys" {
@@ -264,19 +336,101 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
 }
 
 #########################
-# RSA Key Pair
+# Generate RSA Key and Convert to Required Formats
 #########################
+
+# Method 1: Using External OpenSSL Commands (if available)
+data "external" "generate_encrypted_key" {
+  count = var.use_external_openssl ? 1 : 0
+  program = ["bash", "-c", <<-EOF
+    # Generate encrypted PKCS#8 key
+    TEMP_DIR=$(mktemp -d)
+    cd $TEMP_DIR
+    
+    # Generate RSA key and convert to encrypted PKCS#8
+    openssl genrsa 2048 | openssl pkcs8 -topk8 -v2 des3 -inform PEM -out rsa_key.p8 -passout pass:'${local.actual_passphrase}'
+    
+    # Generate public key
+    openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub -passin pass:'${local.actual_passphrase}'
+    
+    # Generate DER format for JDBC
+    openssl rsa -in rsa_key.p8 -inform PEM -outform DER -out rsa_key.der -passin pass:'${local.actual_passphrase}'
+    
+    # Convert to base64 for JSON output
+    PKCS8_KEY=$(cat rsa_key.p8 | base64 -w 0)
+    PUBLIC_KEY=$(cat rsa_key.pub | base64 -w 0)
+    DER_KEY=$(cat rsa_key.der | base64 -w 0)
+    
+    # Clean up
+    rm -rf $TEMP_DIR
+    
+    # Output JSON
+    echo "{\"pkcs8_encrypted\": \"$PKCS8_KEY\", \"public_key\": \"$PUBLIC_KEY\", \"der_key\": \"$DER_KEY\"}"
+  EOF
+  ]
+  
+  depends_on = [random_password.key_passphrase, null_resource.install_openssl]
+}
+
+# Method 2: Using TLS Provider (fallback when OpenSSL not available)
 resource "tls_private_key" "snowflake_key" {
+  count     = var.use_external_openssl ? 0 : 1
   algorithm = "RSA"
   rsa_bits  = 2048
 }
 
+# Convert TLS key to encrypted PKCS#8 using external command (fallback)
+data "external" "encrypt_tls_key" {
+  count = var.use_external_openssl ? 0 : 1
+  program = ["bash", "-c", <<-EOF
+    # Take the TLS generated key and encrypt it
+    TEMP_DIR=$(mktemp -d)
+    cd $TEMP_DIR
+    
+    # Write the PEM key to a file
+    echo '${tls_private_key.snowflake_key[0].private_key_pem}' > temp_key.pem
+    
+    # Convert to encrypted PKCS#8
+    openssl pkcs8 -topk8 -v2 des3 -inform PEM -in temp_key.pem -out rsa_key.p8 -passout pass:'${local.actual_passphrase}'
+    
+    # Generate public key
+    openssl rsa -in temp_key.pem -pubout -out rsa_key.pub
+    
+    # Generate DER format for JDBC
+    openssl rsa -in temp_key.pem -inform PEM -outform DER -out rsa_key.der
+    
+    # Convert to base64 for JSON output
+    PKCS8_KEY=$(cat rsa_key.p8 | base64 -w 0)
+    PUBLIC_KEY=$(cat rsa_key.pub | base64 -w 0)
+    DER_KEY=$(cat rsa_key.der | base64 -w 0)
+    
+    # Clean up
+    rm -rf $TEMP_DIR
+    
+    # Output JSON
+    echo "{\"pkcs8_encrypted\": \"$PKCS8_KEY\", \"public_key\": \"$PUBLIC_KEY\", \"der_key\": \"$DER_KEY\"}"
+  EOF
+  ]
+  
+  depends_on = [random_password.key_passphrase, tls_private_key.snowflake_key]
+}
+
+# Local values to handle both methods
+locals {
+  # Choose the appropriate key data based on method used
+  key_data = var.use_external_openssl ? data.external.generate_encrypted_key[0].result : data.external.encrypt_tls_key[0].result
+  
+  # For Snowflake user (needs unencrypted public key)
+  snowflake_public_key_pem = var.use_external_openssl ? base64decode(local.key_data.public_key) : tls_private_key.snowflake_key[0].public_key_pem
+}
+
 #########################
-# Store Original Private Key in Key Vault (PEM format)
+# Store Original Private Key (PEM format - for backward compatibility)
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
-  name         = var.private_key_name
-  value        = tls_private_key.snowflake_key.private_key_pem
+  count        = var.use_external_openssl ? 0 : 1
+  name         = var.private_key_name != "" ? var.private_key_name : "${var.service_user_name}-private-key"
+  value        = tls_private_key.snowflake_key[0].private_key_pem
   key_vault_id = local.key_vault_id
 
   depends_on = [
@@ -286,31 +440,11 @@ resource "azurerm_key_vault_secret" "private_key" {
 }
 
 #########################
-# Convert PEM to PKCS#8 format using external data
+# Store Encrypted PKCS#8 Private Key in Key Vault
 #########################
-data "external" "convert_to_pkcs8" {
-  program = ["bash", "-c", <<-EOF
-    echo '${tls_private_key.snowflake_key.private_key_pem}' | openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt | jq -Rs '{"pkcs8": .}'
-  EOF
-  ]
-}
-
-#########################
-# Convert PEM to DER format using external data
-#########################
-data "external" "convert_to_der" {
-  program = ["bash", "-c", <<-EOF
-    echo '${tls_private_key.snowflake_key.private_key_pem}' | openssl rsa -inform PEM -outform DER | base64 -w 0 | jq -Rs '{"der": .}'
-  EOF
-  ]
-}
-
-#########################
-# Store PKCS#8 Private Key in Key Vault
-#########################
-resource "azurerm_key_vault_secret" "private_key_pkcs8" {
-  name         = var.private_key_pkcs8_name
-  value        = data.external.convert_to_pkcs8.result.pkcs8
+resource "azurerm_key_vault_secret" "private_key_pkcs8_encrypted" {
+  name         = var.private_key_pkcs8_encrypted_name != "" ? var.private_key_pkcs8_encrypted_name : "${var.service_user_name}-private-key-pkcs8-encrypted"
+  value        = base64decode(local.key_data.pkcs8_encrypted)
   key_vault_id = local.key_vault_id
 
   depends_on = [
@@ -320,11 +454,25 @@ resource "azurerm_key_vault_secret" "private_key_pkcs8" {
 }
 
 #########################
-# Store DER Private Key in Key Vault (Base64 encoded for storage)
+# Store Public Key in Key Vault
+#########################
+resource "azurerm_key_vault_secret" "public_key" {
+  name         = var.public_key_name != "" ? var.public_key_name : "${var.service_user_name}-public-key"
+  value        = base64decode(local.key_data.public_key)
+  key_vault_id = local.key_vault_id
+
+  depends_on = [
+    azurerm_private_endpoint.kv_private_endpoint,
+    azurerm_key_vault.snowflake_keys
+  ]
+}
+
+#########################
+# Store DER Private Key for JDBC in Key Vault
 #########################
 resource "azurerm_key_vault_secret" "private_key_der" {
-  name         = var.private_key_der_name
-  value        = data.external.convert_to_der.result.der
+  name         = var.private_key_der_name != "" ? var.private_key_der_name : "${var.service_user_name}-private-key-der"
+  value        = base64decode(local.key_data.der_key)
   key_vault_id = local.key_vault_id
 
   depends_on = [
@@ -337,7 +485,7 @@ resource "azurerm_key_vault_secret" "private_key_der" {
 # Store Passphrase in Key Vault (with user-specific name)
 #########################
 resource "azurerm_key_vault_secret" "passphrase" {
-  name         = var.passphrase_key_name
+  name         = var.passphrase_key_name != "" ? var.passphrase_key_name : "${var.service_user_name}-key-passphrase"
   value        = local.actual_passphrase
   key_vault_id = local.key_vault_id
 
@@ -358,7 +506,7 @@ resource "snowflake_user" "user" {
 
   rsa_public_key = replace(
     replace(
-      tls_private_key.snowflake_key.public_key_pem,
+      local.snowflake_public_key_pem,
       "-----BEGIN PUBLIC KEY-----", ""
     ),
     "-----END PUBLIC KEY-----", ""
@@ -388,16 +536,16 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
 
   data = {
     credentials = jsonencode({
-      snowflake_account               = var.snowflake_account_name
-      snowflake_organization          = "VOLVOCARS"
-      snowflake_user                  = var.service_user_name
-      snowflake_role                  = var.snowflake_user_role
-      snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
-      snowflake_authenticator         = "JWT"
-      snowflake_private_key           = data.external.convert_to_pkcs8.result.pkcs8
-      #snowflake_private_key_pkcs8     = data.external.convert_to_pkcs8.result.pkcs8
-      #snowflake_private_key_der       = data.external.convert_to_der.result.der
-      snowflake_private_key_passphrase = local.actual_passphrase
+      snowflake_account                    = var.snowflake_account_name
+      snowflake_organization               = "VOLVOCARS"
+      snowflake_user                       = var.service_user_name
+      snowflake_role                       = var.snowflake_user_role
+      snowflake_warehouse                  = "DEV_ADMIN_ANALYST_WHS"
+      snowflake_authenticator              = "JWT"
+      snowflake_private_key_pkcs8_encrypted = base64decode(local.key_data.pkcs8_encrypted)
+      snowflake_private_key_der            = base64decode(local.key_data.der_key)
+      snowflake_public_key                 = base64decode(local.key_data.public_key)
+      snowflake_private_key_passphrase     = local.actual_passphrase
     })
   }
 
@@ -424,17 +572,21 @@ output "private_endpoint_id" {
 }
 
 output "private_key_secret_name" {
-  value = var.private_key_name
+  value = var.use_external_openssl ? "N/A - Using encrypted PKCS#8" : (var.private_key_name != "" ? var.private_key_name : "${var.service_user_name}-private-key")
 }
 
-output "private_key_pkcs8_secret_name" {
-  value = var.private_key_pkcs8_name
+output "private_key_pkcs8_encrypted_secret_name" {
+  value = var.private_key_pkcs8_encrypted_name != "" ? var.private_key_pkcs8_encrypted_name : "${var.service_user_name}-private-key-pkcs8-encrypted"
 }
 
 output "private_key_der_secret_name" {
-  value = var.private_key_der_name
+  value = var.private_key_der_name != "" ? var.private_key_der_name : "${var.service_user_name}-private-key-der"
+}
+
+output "public_key_secret_name" {
+  value = var.public_key_name != "" ? var.public_key_name : "${var.service_user_name}-public-key"
 }
 
 output "passphrase_secret_name" {
-  value = var.passphrase_key_name
+  value = var.passphrase_key_name != "" ? var.passphrase_key_name : "${var.service_user_name}-key-passphrase"
 }
