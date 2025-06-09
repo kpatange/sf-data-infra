@@ -292,14 +292,7 @@ resource "null_resource" "generate_keys" {
     EOT
   }
 
-  # Clean up when destroying
-  provisioner "local-exec" {
-    when    = destroy
-    command = <<-EOT
-      kubectl delete secret snowflake-keys --namespace=upbound-system --ignore-not-found
-      rm -rf ${local.key_dir}
-    EOT
-  }
+
 }
 
 # Data source to verify the secret was created
