@@ -4,9 +4,9 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -18,9 +18,9 @@ terraform {
     }
     snowflake = {
       source  = "Snowflake-Labs/snowflake"
-    }
-  required_version = ">= 1.2"
+    } 
   }
+  required_version = ">= 1.2"
 }
 
 variable "key_vault_access_entra_group" {
