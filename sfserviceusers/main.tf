@@ -309,7 +309,7 @@ resource "tls_private_key" "snowflake_key" {
 }
 
 #########################
-# Store Private Key in Key Vault (with user-specific name)
+# Store Private Key in Key Vault (with user-specific name) test
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
   name           = var.private_key_name
