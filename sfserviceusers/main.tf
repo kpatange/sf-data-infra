@@ -326,7 +326,7 @@ resource "snowflake_execute" "create_user_with_key" {
   revert = "SELECT 1"
 }
 
-data "snowflake_secret" "jdbc_credentials" {
+data "snowflake_secrets" "jdbc_credentials" {
   name = "SECRET_DEV_DINFRA_ETL_USR" # The name of your secret in Snowflake
   database = "PROD_ADMIN_DB" # Database where the secret exists
   schema = "UTILS" # Schema where the secret exists
