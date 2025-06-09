@@ -300,10 +300,7 @@ resource "null_resource" "generate_keys" {
     interpreter = ["/bin/sh", "-c"]
   }
 
-  provisioner "local-exec" {
-    when    = destroy
-    command = "rm -rf ${local.key_dir}"
-  }
+ 
 }
 # Data source to verify the secret was created
 data "kubernetes_secret" "snowflake_keys" {
