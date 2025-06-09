@@ -264,45 +264,60 @@ resource "null_resource" "generate_keys" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      #!/bin/sh
-      set -e
-
-      # Install OpenSSL if not present
-      if ! command -v openssl >/dev/null 2>&1; then
+      # Install OpenSSL if needed
+      if ! command -v openssl; then
         echo "Installing OpenSSL..."
-        (apk add --no-cache openssl || \
-         apt-get update && apt-get install -y openssl || \
-         yum install -y openssl) >/dev/null 2>&1
+        if grep -q Alpine /etc/issue; then
+          apk add --no-cache openssl
+        elif grep -q Ubuntu /etc/issue || grep -q Debian /etc/issue; then
+          apt-get update && apt-get install -y openssl
+        elif grep -q CentOS /etc/issue || grep -q RedHat /etc/issue; then
+          yum install -y openssl
+        fi
       fi
 
-      # Create key directory
-      mkdir -p ${local.key_dir}
+      # Create working directory
+      KEY_DIR=$(mktemp -d)
+      echo "Using directory: $KEY_DIR"
 
       # Generate keys
-      openssl genrsa -out ${local.key_dir}/private_key.pem 2048
+      openssl genrsa -out "$KEY_DIR/private_key.pem" 2048
       openssl pkcs8 -topk8 -inform PEM -outform PEM \
-        -in ${local.key_dir}/private_key.pem \
-        -out ${local.key_dir}/private_key_pkcs8.pem \
-        -passout pass:'${replace(local.actual_passphrase, "'", "'\\''")}'
-      openssl rsa -in ${local.key_dir}/private_key.pem \
-        -pubout -out ${local.key_dir}/public_key.pem
-      chmod 600 ${local.key_dir}/*.pem
+        -in "$KEY_DIR/private_key.pem" \
+        -out "$KEY_DIR/private_key_pkcs8.pem" \
+        -passout pass:"${replace(local.actual_passphrase, "\"", "\\\"")}"
+      openssl rsa -in "$KEY_DIR/private_key.pem" \
+        -pubout -out "$KEY_DIR/public_key.pem"
+      chmod 600 "$KEY_DIR"/*.pem
 
       # Create Kubernetes secret
       kubectl create secret generic snowflake-keys \
         --namespace=upbound-system \
-        --from-file=${local.key_dir}/private_key.pem \
-        --from-file=${local.key_dir}/private_key_pkcs8.pem \
-        --from-file=${local.key_dir}/public_key.pem \
+        --from-file="$KEY_DIR/private_key.pem" \
+        --from-file="$KEY_DIR/private_key_pkcs8.pem" \
+        --from-file="$KEY_DIR/public_key.pem" \
         --dry-run=client -o yaml | kubectl apply -f -
+
+      # Clean up (except in destroy phase)
+      if [ -z "$TERRAFORM_DESTROY" ]; then
+        rm -rf "$KEY_DIR"
+      fi
     EOT
 
-    interpreter = ["/bin/sh", "-c"]
+    environment = {
+      TERRAFORM_DESTROY = "false"
+    }
   }
 
- 
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      # Find and clean up any leftover key directories
+      find /tmp -name 'keys-*' -type d -mtime +1 -exec rm -rf {} + 2>/dev/null || true
+    EOT
+  }
 }
-# Data source to verify the secret was created
+
 data "kubernetes_secret" "snowflake_keys" {
   metadata {
     name      = "snowflake-keys"
