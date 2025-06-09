@@ -286,11 +286,31 @@ resource "azurerm_key_vault_secret" "private_key" {
 }
 
 #########################
+# Convert PEM to PKCS#8 format using external data
+#########################
+data "external" "convert_to_pkcs8" {
+  program = ["bash", "-c", <<-EOF
+    echo '${tls_private_key.snowflake_key.private_key_pem}' | openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt | jq -Rs '{"pkcs8": .}'
+  EOF
+  ]
+}
+
+#########################
+# Convert PEM to DER format using external data
+#########################
+data "external" "convert_to_der" {
+  program = ["bash", "-c", <<-EOF
+    echo '${tls_private_key.snowflake_key.private_key_pem}' | openssl rsa -inform PEM -outform DER | base64 -w 0 | jq -Rs '{"der": .}'
+  EOF
+  ]
+}
+
+#########################
 # Store PKCS#8 Private Key in Key Vault
 #########################
 resource "azurerm_key_vault_secret" "private_key_pkcs8" {
   name         = var.private_key_pkcs8_name
-  value        = tls_private_key.snowflake_key.private_key_pkcs8
+  value        = data.external.convert_to_pkcs8.result.pkcs8
   key_vault_id = local.key_vault_id
 
   depends_on = [
@@ -304,7 +324,7 @@ resource "azurerm_key_vault_secret" "private_key_pkcs8" {
 #########################
 resource "azurerm_key_vault_secret" "private_key_der" {
   name         = var.private_key_der_name
-  value        = base64encode(tls_private_key.snowflake_key.private_key_der)
+  value        = data.external.convert_to_der.result.der
   key_vault_id = local.key_vault_id
 
   depends_on = [
@@ -374,9 +394,9 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_role                  = var.snowflake_user_role
       snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
       snowflake_authenticator         = "JWT"
-      snowflake_private_key           = tls_private_key.snowflake_key.private_key_pkcs8
-      #snowflake_private_key_pkcs8     = tls_private_key.snowflake_key.private_key_pkcs8
-      #snowflake_private_key_der       = base64encode(tls_private_key.snowflake_key.private_key_der)
+      snowflake_private_key           = data.external.convert_to_pkcs8.result.pkcs8
+      #snowflake_private_key_pkcs8     = data.external.convert_to_pkcs8.result.pkcs8
+      #snowflake_private_key_der       = data.external.convert_to_der.result.der
       snowflake_private_key_passphrase = local.actual_passphrase
     })
   }
