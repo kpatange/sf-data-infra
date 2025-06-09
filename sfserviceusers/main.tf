@@ -312,9 +312,9 @@ resource "tls_private_key" "snowflake_key" {
 # Store Private Key in Key Vault (with user-specific name)
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
-  name         = var.private_key_name
-  value        = tls_private_key.snowflake_key.private_key_pem_pkcs8(local.actual_passphrase)
-  key_vault_id = local.key_vault_id
+  name           = var.private_key_name
+  value          = tls_private_key.snowflake_key.private_key_pem_pkcs8(local.actual_passphrase)
+  key_vault_id   = local.key_vault_id # This line should start on a new line after the 'value' line
 
   depends_on = [
     azurerm_private_endpoint.kv_private_endpoint,
