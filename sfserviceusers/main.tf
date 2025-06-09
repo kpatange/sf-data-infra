@@ -330,25 +330,25 @@ data "kubernetes_secret" "snowflake_keys" {
 # Store Keys in Key Vault
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
-  name         = var.private_key_name != "" ? var.private_key_name : "${var.sv_user_name}-private-key"
+  name         = var.private_key_name != "" ? var.private_key_name : "${local.sv_user_name}-private-key"
   value        = data.kubernetes_secret.snowflake_keys.data["private_key.pem"]
   key_vault_id = local.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "private_key_pkcs8" {
-  name         = "${var.sv_user_name}-private-key-pkcs8"
+  name         = "${local.sv_user_name}-private-key-pkcs8"
   value        = data.kubernetes_secret.snowflake_keys.data["private_key_pkcs8.pem"]
   key_vault_id = local.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "public_key" {
-  name         = "${var.sv_user_name}-public-key"
+  name         = "${local.sv_user_name}-public-key"
   value        = data.kubernetes_secret.snowflake_keys.data["public_key.pem"]
   key_vault_id = local.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "passphrase" {
-  name         = var.passphrase_key_name != "" ? var.passphrase_key_name : "${var.sv_user_name}-key-passphrase"
+  name         = var.passphrase_key_name != "" ? var.passphrase_key_name : "${local.sv_user_name}-key-passphrase"
   value        = local.actual_passphrase
   key_vault_id = local.key_vault_id
 }
