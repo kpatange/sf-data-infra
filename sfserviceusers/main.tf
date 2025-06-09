@@ -24,6 +24,7 @@ terraform {
       version = "~> 2.23"
   }
   required_version = ">= 1.2"
+  }
 }
 
 variable "key_vault_access_entra_group" {
