@@ -396,7 +396,7 @@ resource "azurerm_key_vault_secret" "private_key" {
 #########################
 resource "azurerm_key_vault_secret" "passphrase" {
   name         =  var.passphrase_key_name
-  value        = local.parsed_data.passhrase
+  value        = local.actual_passphrase
   key_vault_id = local.key_vault_id
 
   depends_on = [
