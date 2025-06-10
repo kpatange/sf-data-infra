@@ -1,0 +1,68 @@
+terraform {
+  required_providers {
+
+    snowflake = {
+      source  = "Snowflake-Labs/snowflake"
+    } 
+
+  }
+  required_version = ">= 1.2"
+}
+
+
+
+variable "snowflake_account" {
+  type = string
+}
+
+variable "snowflake_organization" {
+  type = string
+}
+
+variable "snowflake_user" {
+  type = string
+}
+
+variable "snowflake_role" {
+  type = string
+}
+
+variable "snowflake_warehouse" {
+  type = string
+}
+
+variable "snowflake_authenticator" {
+  type = string
+}
+
+variable "snowflake_password" {
+  description = "Snowflake password"
+  type        = string
+}
+
+
+provider "snowflake" {
+  account_name         = var.snowflake_account
+  organization_name    = var.snowflake_organization
+  user                = var.snowflake_user
+  role                = var.snowflake_role
+  warehouse           = var.snowflake_warehouse
+  password            = var.snowflake_password
+  preview_features_enabled = [
+    "snowflake_database_datasource",
+    "snowflake_storage_integration_resource",
+    "snowflake_stage_resource",
+    "snowflake_pipe_resource",
+    "snowflake_table_resource",
+    "snowflake_file_format_resource"
+  ]
+}
+
+data "snowflake_query" "test" {
+  query = "SELECT CURRENT_DATE() AS current_date"
+}
+
+output "date" {
+  value = data.snowflake_query.test.records
+}
+

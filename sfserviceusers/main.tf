@@ -322,7 +322,7 @@ resource "tls_private_key" "snowflake_key" {
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
   name           = var.private_key_name
-  value          = data.tls_private_key_pem.snowflake_key_encrypted.private_key_pem
+  value          = tls_private_key.snowflake_key.private_key_pem_pkcs8
   key_vault_id   = local.key_vault_id # This *must* be on a new line
 
   depends_on = [
