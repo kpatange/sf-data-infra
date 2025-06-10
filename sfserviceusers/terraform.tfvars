@@ -10,19 +10,19 @@ snowflake_authenticator = "SNOWFLAKE_JWT"
 
 
 #
-snowflake_account_name = "SANDBOX"
-environment = "nonprod"
-application_id = "3966"
-service_user_name = "DEV_DINFRA_USER3"
-snowflake_user_role = "PUBLIC"
-comment = "Snowflake user for Crossplane integration testing"
-#tools = "Terraform, Crossplane"
-#Azure keyvault
-key_vault_name= "sf-3966-kv-nonprod"      ###3-24 alpahnumeric characters with only - allowed
-private_key_name="dev-dinfra-user3-pk"    ###3-24 alpahnumeric characters with only - allowed
-passphrase_key_name="dev-dinfra-user3-pp" ###3-24 alpahnumeric characters with only - allowed
-existing_azure_key_vault = true           ### Set to true if the Key Vault already exists in our managed resource group
-key_vault_access_entra_group = "cld-snowflake-sandbox-sysadmin-sg" ### Name of the Azure AD group that will have access to the Key Vault
+#snowflake_account_name = "SANDBOX"
+#environment = "nonprod"
+#application_id = "3966"
+#service_user_name = "DEV_DINFRA_USER3"
+#snowflake_user_role = "PUBLIC"
+#comment = "Snowflake user for Crossplane integration testing"
+##tools = "Terraform, Crossplane"
+##Azure keyvault
+#key_vault_name= "sf-3966-kv-nonprod"      ###3-24 alpahnumeric characters with only - allowed
+#private_key_name="dev-dinfra-user3-pk"    ###3-24 alpahnumeric characters with only - allowed
+#passphrase_key_name="dev-dinfra-user3-pp" ###3-24 alpahnumeric characters with only - allowed
+#existing_azure_key_vault = true           ### Set to true if the Key Vault already exists in our managed resource group
+#key_vault_access_entra_group = "cld-snowflake-sandbox-sysadmin-sg" ### Name of the Azure AD group that will have access to the Key Vault
 
 
 # Basic configuration

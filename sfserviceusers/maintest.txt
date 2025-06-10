@@ -58,11 +58,55 @@ provider "snowflake" {
   ]
 }
 
-data "snowflake_query" "test" {
-  query = "SELECT CURRENT_DATE() AS current_date"
+resource "snowflake_execute" "test" {
+  execute = "SELECT 1"
+  revert  = "SELECT 2"
+  query   = <<-SQL
+    CALL PROD_ADMIN_DB.UTILS.CREATE_USER_WITH_RSA_KEY_PAIR(
+    'DUMMY',
+    'DUMMY',
+    'DUMMY',
+    'DUMMY',
+    'Service account for data pipeline'
+)
+  SQL
 }
 
-output "date" {
-  value = data.snowflake_query.test.records
+output "data" {
+  value = jsondecode(snowflake_execute.test.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
 }
+
+# Parse the JSON data
+locals {
+  parsed_data = jsondecode(snowflake_execute.test.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
+}
+
+# Output variables
+output "user_name" {
+  value = local.parsed_data.user_name
+}
+
+output "status" {
+  value = local.parsed_data.status
+}
+
+output "public_key" {
+  value = local.parsed_data.public_key
+}
+
+output "private_key" {
+  sensitive = true  # Mark as sensitive to hide in console/logs
+  value     = local.parsed_data.private_key
+}
+
+output "private_key_jdbc" {
+  sensitive = true
+  value     = local.parsed_data.private_key_jdbc
+}
+
+output "passphrase" {
+  sensitive = true
+  value     = local.parsed_data.passhrase  # Note: Typo in source ("passhrase")
+}
+
 
