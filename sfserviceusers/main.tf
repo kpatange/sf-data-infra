@@ -424,10 +424,10 @@ resource "snowflake_user" "user" {
 }
 
 # create and destroy resource using qualified name
-resource "snowflake_execute" "grants" {
-  execute = "GRANT ROLE \"${var.snowflake_user_role}\" TO USER \"${var.service_user_name}\""
-  revert = "SELECT 1"
-}
+#resource "snowflake_execute" "grants" {
+#  execute = "GRANT ROLE \"${var.snowflake_user_role}\" TO USER \"${var.service_user_name}\""
+#  revert = "SELECT 1"
+#}
 
 
 # create and destroy resource using qualified name
