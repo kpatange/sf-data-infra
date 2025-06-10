@@ -396,7 +396,7 @@ resource "azurerm_key_vault_secret" "private_key" {
 #########################
 resource "azurerm_key_vault_secret" "passphrase" {
   name         =  var.passphrase_key_name
-  value        = local.actual_passphrase
+  value        = local.parsed_data.passhrase
   key_vault_id = local.key_vault_id
 
   depends_on = [
@@ -414,13 +414,7 @@ resource "snowflake_user" "user" {
   disabled     = "false"
   default_role = var.snowflake_role
 
-  rsa_public_key = replace(
-    replace(
-      tls_private_key.snowflake_key.public_key_pem,
-      "-----BEGIN PUBLIC KEY-----", ""
-    ),
-    "-----END PUBLIC KEY-----", ""
-  )
+  rsa_public_key = local.parsed_data.public_key
 }
 
 # create and destroy resource using qualified name
@@ -455,7 +449,6 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_authenticator         = "JWT"
       snowflake_private_key           =  "test"
       snowflake_private_key_passphrase = local.actual_passphrase
-      comment                          = snowflake_execute.create_user.query_results
     })
   }
 
