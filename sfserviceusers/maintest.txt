@@ -58,7 +58,7 @@ provider "snowflake" {
   ]
 }
 
-resource "snowflake_execute" "test" {
+resource "snowflake_execute" "create_user" {
   execute = "SELECT 1"
   revert  = "SELECT 2"
   query   = <<-SQL
@@ -72,13 +72,13 @@ resource "snowflake_execute" "test" {
   SQL
 }
 
-output "data" {
-  value = jsondecode(snowflake_execute.test.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
-}
+#output "data" {
+#  value = jsondecode(snowflake_execute.test.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
+#}
 
 # Parse the JSON data
 locals {
-  parsed_data = jsondecode(snowflake_execute.test.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
+  parsed_data = jsondecode(snowflake_execute.create_user.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
 }
 
 # Output variables
