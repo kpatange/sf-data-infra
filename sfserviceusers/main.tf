@@ -332,11 +332,11 @@ output "data" {
   value = snowflake_execute.create_user.query_results
 }
 
-resource "snowflake_execute" "test" {
-  execute = "SELECT ${snowflake_execute.create_user.query_results}"
-  revert  = "SELECT 4"
-  
-}
+#resource "snowflake_execute" "test" {
+#  execute = "SELECT ${snowflake_execute.create_user.query_results}"
+#  revert  = "SELECT 4"
+#  
+#}
 
 # Parse the JSON data
 #locals {
@@ -455,6 +455,7 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_authenticator         = "JWT"
       snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pem
       snowflake_private_key_passphrase = local.actual_passphrase
+      comment                          = snowflake_execute.create_user.query_results
     })
   }
 
