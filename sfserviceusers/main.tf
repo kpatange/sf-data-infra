@@ -307,12 +307,12 @@ resource "azurerm_private_endpoint" "kv_private_endpoint" {
 #########################
 # RSA Key Pair
 #########################
-#resource "tls_private_key" "snowflake_key" {
-#  algorithm = "RSA"
-#  rsa_bits  = 2048
-#  #encryption_algorithm = "AES-256-CBC"
-#  #passphrase = local.actual_passphrase
-#}
+resource "tls_private_key" "snowflake_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+  #encryption_algorithm = "AES-256-CBC"
+  #passphrase = local.actual_passphrase
+}
 
 resource "snowflake_execute" "create_user" {
   execute = "SELECT 1"
@@ -334,15 +334,15 @@ output "data" {
 
 resource "snowflake_execute" "test" {
   execute = "SELECT ${snowflake_execute.create_user.query_results}"
-  revert  = "SELECT 2"
+  revert  = "SELECT 4"
   
 }
 
 # Parse the JSON data
-locals {
-  #parsed_data = jsondecode(snowflake_execute.create_user.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
-   parsed_data ="1"
-}
+#locals {
+#  #parsed_data = jsondecode(snowflake_execute.create_user.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
+#   parsed_data ="1"
+#}
 
 # Output variables
 #output "user_name" {
@@ -380,7 +380,7 @@ locals {
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
   name           = var.private_key_name
-  value          = local.parsed_data.private_key
+  value          = tls_private_key.snowflake_key.private_key_pem
   key_vault_id   = local.key_vault_id # This *must* be on a new line
 
   depends_on = [
@@ -389,16 +389,7 @@ resource "azurerm_key_vault_secret" "private_key" {
   ]
 }
 
-resource "azurerm_key_vault_secret" "private_key_jdbc" {
-  name           = "${var.private_key_name}-jdbc"
-  value          = local.parsed_data.private_key_jdbc
-  key_vault_id   = local.key_vault_id # This *must* be on a new line
 
-  depends_on = [
-    azurerm_private_endpoint.kv_private_endpoint,
-    azurerm_key_vault.snowflake_keys
-  ]
-}
 
 #########################
 # Store Passphrase in Key Vault (with user-specific name)
@@ -456,8 +447,8 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_role                  = var.snowflake_user_role
       snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
       snowflake_authenticator         = "JWT"
-      snowflake_private_key           =  local.parsed_data.private_key
-      snowflake_private_key_passphrase = local.parsed_data.passhrase
+      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pem
+      snowflake_private_key_passphrase = local.actual_passphrase
     })
   }
 
