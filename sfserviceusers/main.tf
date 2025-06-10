@@ -329,7 +329,7 @@ resource "snowflake_execute" "create_user" {
 }
 
 output "data" {
-  value = jsondecode(snowflake_execute.test.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
+  value = jsondecode(snowflake_execute.create_user.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
 }
 
 # Parse the JSON data
