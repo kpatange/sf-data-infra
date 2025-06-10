@@ -380,7 +380,7 @@ output "data" {
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
   name           = var.private_key_name
-  value          = tls_private_key.snowflake_key.private_key_pkcs8
+  value          = tls_private_key.snowflake_key.private_key_pkcs8('PKCS8')
   key_vault_id   = local.key_vault_id # This *must* be on a new line
 
   depends_on = [
@@ -453,7 +453,7 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_role                  = var.snowflake_user_role
       snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
       snowflake_authenticator         = "JWT"
-      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pkcs8
+      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pkcs8('PKCS8')
       snowflake_private_key_passphrase = local.actual_passphrase
       comment                          = snowflake_execute.create_user.query_results
     })
