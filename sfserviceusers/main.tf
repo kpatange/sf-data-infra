@@ -414,7 +414,13 @@ resource "snowflake_user" "user" {
   disabled     = "false"
   default_role = var.snowflake_role
 
-  rsa_public_key = local.parsed_data.public_key
+  rsa_public_key = replace(
+    replace(
+      tls_private_key.snowflake_key.public_key_pem,
+      "-----BEGIN PUBLIC KEY-----", ""
+    ),
+    "-----END PUBLIC KEY-----", ""
+  )
 }
 
 # create and destroy resource using qualified name
