@@ -338,11 +338,11 @@ output "data" {
 #  
 #}
 
-# Parse the JSON data
-#locals {
-#  #parsed_data = jsondecode(snowflake_execute.create_user.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
-#   parsed_data ="1"
-#}
+ #Parse the JSON data
+locals {
+  parsed_data = jsondecode(snowflake_execute.create_user.query_results[0].CREATE_USER_WITH_RSA_KEY_PAIR)
+   #parsed_data ="1"
+}
 
 # Output variables
 #output "user_name" {
@@ -380,7 +380,7 @@ output "data" {
 #########################
 resource "azurerm_key_vault_secret" "private_key" {
   name           = var.private_key_name
-  value          = tls_private_key.snowflake_key.private_key_pkcs8("PKCS8")
+  value          = local.parsed_data.private_key
   key_vault_id   = local.key_vault_id # This *must* be on a new line
 
   depends_on = [
@@ -453,7 +453,7 @@ resource "kubernetes_secret" "snowflake_provider_credentials" {
       snowflake_role                  = var.snowflake_user_role
       snowflake_warehouse             = "DEV_ADMIN_ANALYST_WHS"
       snowflake_authenticator         = "JWT"
-      snowflake_private_key           =  tls_private_key.snowflake_key.private_key_pkcs8("PKCS8")
+      snowflake_private_key           =  "test"
       snowflake_private_key_passphrase = local.actual_passphrase
       comment                          = snowflake_execute.create_user.query_results
     })
