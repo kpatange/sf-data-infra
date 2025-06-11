@@ -424,11 +424,11 @@ resource "snowflake_user" "user" {
 #}
 
 
-# create and destroy resource using qualified name
-#resource "snowflake_execute" "sendmail" {
-#  execute = "CALL PROD_ADMIN_DB.UTILS.SEND_AREA_SERVICEUSR_EMAIL('${var.application_id}','${var.environment}','${var.snowflake_account_name}','${var.key_vault_name}','${var.application_id}','${var.service_user_name}')"
-#  revert = "SELECT 1"
-#}
+ #create and destroy resource using qualified name
+resource "snowflake_execute" "sendmail" {
+  execute = "CALL PROD_ADMIN_DB.UTILS.SEND_AREA_SERVICEUSR_EMAIL('${var.application_id}','${var.environment}','${var.snowflake_account_name}','${var.key_vault_name}','${var.application_id}','${var.service_user_name}')"
+  revert = "SELECT 1"
+}
 
 #########################
 # Create Kubernetes Secret for Crossplane
