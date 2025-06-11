@@ -326,6 +326,9 @@ resource "snowflake_execute" "create_user" {
     'Service account for data pipeline'
 )
   SQL
+   lifecycle {
+    ignore_changes = [query]
+  }
 }
 
 output "data" {
