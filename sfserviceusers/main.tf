@@ -422,7 +422,7 @@ resource "snowflake_user" "user" {
   name         = var.service_user_name
   comment      = var.comment
   disabled     = "false"
-  default_role = var.snowflake_role
+  default_role = var.snowflake_user_role
 
   rsa_public_key = local.parsed_data.public_key
      lifecycle {
