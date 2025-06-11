@@ -438,11 +438,6 @@ resource "snowflake_execute" "grants" {
   execute = "GRANT ROLE \"${var.snowflake_user_role}\" TO USER \"${var.service_user_name}\""
   revert = "SELECT 1"
 
-   depends_on = [
-    azurerm_private_endpoint.kv_private_endpoint,
-    azurerm_key_vault.snowflake_keys,
-    snowflake_user.user
-  ]
   lifecycle {
     ignore_changes = [snowflake_user_role, service_user_name]
   } 
@@ -453,11 +448,6 @@ resource "snowflake_execute" "grants" {
 resource "snowflake_execute" "sendmail" {
   execute = "CALL PROD_ADMIN_DB.UTILS.SEND_AREA_SERVICEUSR_EMAIL('${var.application_id}','${var.environment}','${var.snowflake_account_name}','${var.key_vault_name}','${var.application_id}','${var.service_user_name}')"
   revert = "SELECT 1"
-     depends_on = [
-    azurerm_private_endpoint.kv_private_endpoint,
-    azurerm_key_vault.snowflake_keys,
-    snowflake_user.user
-  ]
 }
 
 #########################
