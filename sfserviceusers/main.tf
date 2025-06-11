@@ -437,10 +437,6 @@ resource "snowflake_user" "user" {
 resource "snowflake_execute" "grants" {
   execute = "GRANT ROLE \"${var.snowflake_user_role}\" TO USER \"${var.service_user_name}\""
   revert = "SELECT 1"
-
-  lifecycle {
-    ignore_changes = [snowflake_user_role, service_user_name]
-  } 
 }
 
 
