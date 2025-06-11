@@ -390,6 +390,9 @@ resource "azurerm_key_vault_secret" "private_key" {
     azurerm_private_endpoint.kv_private_endpoint,
     azurerm_key_vault.snowflake_keys
   ]
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 
@@ -406,6 +409,9 @@ resource "azurerm_key_vault_secret" "passphrase" {
     azurerm_private_endpoint.kv_private_endpoint,
     azurerm_key_vault.snowflake_keys
   ]
+   lifecycle {
+    ignore_changes = [value]
+  } 
 }
 
 #########################
