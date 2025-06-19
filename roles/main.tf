@@ -19,7 +19,7 @@ resource "snowflake_execute" "grants" {
   
   #execute ="USE ROLE SYSADMIN;"
   execute = <<EOT
-    CALL PROD_ADMIN_DB.UTILS.role_extension(
+    CALL PROD_ADMIN_DB.UTILS.role_extension_json(
       '${var.role_hierarchy}'
     );
   EOT
